@@ -19,7 +19,7 @@ Here's what a puzzle url looks like:
 import os
 import re
 import sys
-import urllib
+import urllib.request
 import argparse
 
 
@@ -28,22 +28,15 @@ def read_urls(filename):
     extracting the hostname from the filename itself.
     Screens out duplicate urls and returns the urls sorted into
     increasing order."""
-    underbar = filename.index('_')
-    hostname = filename[underbar + 1:]
-    dict_url = {}
-    with open(filename) as f:
-        line = f.read()
-
-        for line in f:
-            match_line = r'GET (\S+)'
-            match = re.search(match_line, line)
-
-            if match:
-                path = match.group(1)
-                if 'puzzle' in path:
-                    dict_url['http://' + hostname + path] = 1
-        return sorted(dict_url.keys(), key=dict_url)
-
+    match_line = r'\S+puzzle\S+'
+    with open(filename, 'r') as f:
+        text_urls = f.read()
+        urls = []
+        url_paths = list(set(re.findall(match_line, text_urls, re.DOTALL)))
+        for path in url_paths:
+            urls.append("https://code.google.com" + path)
+        urls = sorted(urls, key=lambda url:url[-8:])
+        return urls
 
 def download_images(img_urls, dest_dir):
     """Given the urls already in the correct order, downloads
@@ -53,22 +46,42 @@ def download_images(img_urls, dest_dir):
     with an img tag to show each local image file.
     Creates the directory if necessary.
     """
+    img = urllib.request
+    img_list = []
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
+        os.chdir(dest_dir)
+    for index, url in enumerate(img_urls):
+        print(url)
+        img_print = "img" + str(index) + ".jpg"
+        img.urlretrieve(url, img_print)
+        img_list.append(img_print)
+    with open("index.html", "w") as f:
+        f.write("""<html>
+    <head>
+        <title>ABRA-CAD-DAB-RA!</title>
+    </head>
+​
+    <body>
+    <h1>ABRA-CAD-DAB-RA!</h1>
+​
+            <div class="Main">
+    """)
+        for img in img_list:
+            f.write(f'<img src="{img}" />')
 
-    index = os.path.join(dest_dir, "index.html")
-    index.write("<html><body>\n")
+        f.write("""
+            </div>
+    </body>
+​
+            <footer>
+                <div class="Footer">
+                <b>Copyright - 2020</b>
+            </div>
+        </footer>
+    </html>
+    """)
 
-    i = 0
-    for img_url in img_urls:
-        local = (f'img {i}')
-        print("Retrieving: ", img_url)
-        urllib.urlretrieve(img_url, os.path.join(dest_dir, local))
-
-        index.write(f"<img src={img_url}>" (local,))
-        i += 1
-
-        index.write('\n</body></html>\n')
 
 
 def create_parser():
